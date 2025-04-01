@@ -1,8 +1,8 @@
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 from pyrogram import Client, filters, enums 
 
-class buttons(object):
-    mbutton = [[InlineKeyboardButton("sᴇᴀʀᴄʜ", callback_data="mplus help_search"),
+class BUTTONS(object):
+    MBUTTON = [[InlineKeyboardButton("sᴇᴀʀᴄʜ", callback_data="mplus help_search"),
     InlineKeyboardButton("ɪᴍᴀɢᴇ", callback_data="mplus help_image"), 
     InlineKeyboardButton("ᴇxᴛʀᴀ", callback_data="mplus help_extra")], 
     

@@ -58,7 +58,7 @@ async def promote_command_handler(client, message):
 
     try:
         m = await message.reply_text("ᴘʀᴏᴍᴏᴛɪɴɢ.")
-        await animate_message(m, ["**ᴘʀᴏᴍᴏᴛɪɴɢ..**", "**ᴘʀᴏᴍᴏᴛɪɴɢ...**", "**ᴘʀᴏᴍᴏᴛɪɴɢ....**", "**ᴘʀᴏᴍᴏᴛɪɴɢ.**", "**ᴘʀᴏᴍᴏᴛᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ!**"])
+        await animate_message(m, ["**ᴘʀᴏᴍᴏᴛɪɴɢ..**", "**ᴘʀᴏᴍᴏᴛɪɴɢ...**", "**ᴘʀᴏᴍᴏᴛɪɴɢ....**", "**ᴘʀᴏᴍᴏᴛᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ!**"])
 
         await client.promote_chat_member(
             chat_id=chat.id,

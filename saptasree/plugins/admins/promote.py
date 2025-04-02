@@ -6,7 +6,7 @@ from saptasree import app
 import asyncio
 
 def mention(user_id, name):
-    return f"{name}"
+    return f"[{name}](tg://user?id={user_id})"
 
 def admin_required(*privileges):
     def decorator(func):
@@ -79,7 +79,13 @@ async def promote_command_handler(client, message):
         )
 
         await m.edit(
-            f"**» ᴘʀᴏᴍᴏᴛᴇᴅ ᴜsᴇʀ:** {mention(user.id, user.first_name)}\n**└ ᴀᴄᴛɪᴏɴ ʀᴀɪsᴇᴅ ʙʏ:** {mention(message.from_user.id, message.from_user.first_name)}",
+            f"""**✦ ᴘʀᴏᴍᴏᴛɪᴏɴ sᴜᴄᴄᴇssғᴜʟ ✦**
+
+**➥ ᴜsᴇʀ:** {mention(user.id, user.first_name)}
+**➥ ʀᴀɴᴋ:** ᴀᴅᴍɪɴɪsᴛʀᴀᴛᴏʀ
+**➥ ʙʏ:** {mention(message.from_user.id, message.from_user.first_name)}
+
+**» ᴡᴇ ᴀᴘᴘᴏɪɴᴛᴇᴅ ʏᴏᴜ ᴀs ᴀᴅᴍɪɴ! ɴᴏᴡ ᴅᴏ ʏᴏᴜʀ ʙᴇsᴛ!**""",
             reply_markup=close_button
         )
 
@@ -121,7 +127,13 @@ async def demote_command_handler(client, message):
         )
 
         await m.edit(
-            f"**» ᴅᴇᴍᴏᴛᴇᴅ ᴜsᴇʀ:** {mention(user.id, user.first_name)}\n**└ ᴀᴄᴛɪᴏɴ ʀᴀɪsᴇᴅ ʙʏ:** {mention(message.from_user.id, message.from_user.first_name)}",
+            f"""**✦ ᴅᴇᴍᴏᴛɪᴏɴ sᴜᴄᴄᴇssғᴜʟ ✦**
+
+**➥ ᴜsᴇʀ:** {mention(user.id, user.first_name)}
+**➥ ʀᴇᴍᴏᴠᴇᴅ ғʀᴏᴍ:** ᴀᴅᴍɪɴɪsᴛʀᴀᴛᴏʀ
+**➥ ʙʏ:** {mention(message.from_user.id, message.from_user.first_name)}
+
+**» ʏᴏᴜʀ ᴀᴅᴍɪɴ ᴘᴏᴡᴇʀs ʜᴀᴠᴇ ʙᴇᴇɴ ʀᴇᴠᴏᴋᴇᴅ.**""",
             reply_markup=close_button
         )
 

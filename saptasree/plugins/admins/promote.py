@@ -1,5 +1,5 @@
 from pyrogram import Client, filters, enums
-from pyrogram.types import ChatPrivileges
+from pyrogram.types import ChatPrivileges, InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.errors import ChatAdminRequired
 from functools import wraps
 from saptasree import app
@@ -39,6 +39,13 @@ async def animate_message(message, text_sequence):
         await message.edit(text)
         await asyncio.sleep(0.5)
 
+@app.on_callback_query(filters.regex("^close_promote$"))
+async def close_promote_callback(client, callback_query):
+    try:
+        await callback_query.message.delete()
+    except Exception as e:
+        await callback_query.answer(f"ғᴀɪʟᴇᴅ ᴛᴏ ᴅᴇʟᴇᴛᴇ: {str(e)}", show_alert=True)
+
 @app.on_message(filters.command("promote"))
 @admin_required("can_promote_members")
 async def promote_command_handler(client, message):
@@ -51,7 +58,7 @@ async def promote_command_handler(client, message):
 
     try:
         m = await message.reply_text("ᴘʀᴏᴍᴏᴛɪɴɢ.")
-        await animate_message(m, ["ᴘʀᴏᴍᴏᴛɪɴɢ..", "ᴘʀᴏᴍᴏᴛɪɴɢ...", "ᴘʀᴏᴍᴏᴛᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ!"])
+        await animate_message(m, ["**ᴘʀᴏᴍᴏᴛɪɴɢ..**", "**ᴘʀᴏᴍᴏᴛɪɴɢ...**", "**ᴘʀᴏᴍᴏᴛɪɴɢ....**", "**ᴘʀᴏᴍᴏᴛɪɴɢ.**", "**ᴘʀᴏᴍᴏᴛᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ!**"])
 
         await client.promote_chat_member(
             chat_id=chat.id,
@@ -67,10 +74,17 @@ async def promote_command_handler(client, message):
             )
         )
 
-        await m.edit(f"✅ ᴘʀᴏᴍᴏᴛᴇᴅ ᴜsᴇʀ: {mention(user.id, user.first_name)}\n🔹 ᴀᴄᴛɪᴏɴ ʀᴀɪsᴇᴅ ʙʏ: {mention(message.from_user.id, message.from_user.first_name)}")
+        close_button = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("ᴄʟᴏsᴇ", callback_data="close_promote")]]
+        )
+
+        await m.edit(
+            f"**» ᴘʀᴏᴍᴏᴛᴇᴅ ᴜsᴇʀ:** {mention(user.id, user.first_name)}\n**└ ᴀᴄᴛɪᴏɴ ʀᴀɪsᴇᴅ ʙʏ:** {mention(message.from_user.id, message.from_user.first_name)}",
+            reply_markup=close_button
+        )
 
     except Exception as e:
-        await message.reply_text(f"❌ ᴇʀʀᴏʀ: {e}")
+        await message.reply_text(f"ᴇʀʀᴏʀ: {e}")
 
 @app.on_message(filters.command("demote"))
 @admin_required("can_promote_members")
@@ -84,7 +98,7 @@ async def demote_command_handler(client, message):
 
     try:
         m = await message.reply_text("ᴅᴇᴍᴏᴛɪɴɢ.")
-        await animate_message(m, ["ᴅᴇᴍᴏᴛɪɴɢ..", "ᴅᴇᴍᴏᴛɪɴɢ...", "ᴅᴇᴍᴏᴛᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ!"])
+        await animate_message(m, ["**ᴅᴇᴍᴏᴛɪɴɢ..**", "**ᴅᴇᴍᴏᴛɪɴɢ...**", "**ᴅᴇᴍᴏᴛᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ!**"])
 
         await client.promote_chat_member(
             chat_id=chat.id,
@@ -102,7 +116,14 @@ async def demote_command_handler(client, message):
             )
         )
 
-        await m.edit(f"✅ ᴅᴇᴍᴏᴛᴇᴅ ᴜsᴇʀ: {mention(user.id, user.first_name)}\n🔹 ᴀᴄᴛɪᴏɴ ʀᴀɪsᴇᴅ ʙʏ: {mention(message.from_user.id, message.from_user.first_name)}")
+        close_button = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("ᴄʟᴏsᴇ", callback_data="close_promote")]]
+        )
+
+        await m.edit(
+            f"**» ᴅᴇᴍᴏᴛᴇᴅ ᴜsᴇʀ:** {mention(user.id, user.first_name)}\n**└ ᴀᴄᴛɪᴏɴ ʀᴀɪsᴇᴅ ʙʏ:** {mention(message.from_user.id, message.from_user.first_name)}",
+            reply_markup=close_button
+        )
 
     except Exception as e:
-        await message.reply_text(f"❌ ᴇʀʀᴏʀ: {e}")
+        await message.reply_text(f"» ᴇʀʀᴏʀ: {e}")

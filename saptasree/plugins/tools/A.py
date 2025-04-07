@@ -1,99 +1,74 @@
 from saptasree import app
-import aiohttp
-import asyncio
-import re
+from pyrogram import Client, filters
+from pyrogram.errors import ChatIdInvalid
+from pyrogram.errors import ChatAdminRequired, ChatNotModified, ChatIdInvalid, FloodWait, InviteHashExpired, UserNotParticipant
 import os
-from pyrogram import filters
+import json
+from pyrogram.types import Message
+from saptasree.misc import SUDOERS
 
-CONCURRENCY_LIMIT = 1
-semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
 
-async def process_credit_card(cc_entry, message, stats, session):
-    async with semaphore:
-        try:
-            x = re.findall(r'\d+', cc_entry)
-            if len(x) != 4:
-                return
-            
-            ccn, mm, yy, cvv = x
 
-            VALID = ('37', '34', '4', '51', '52', '53', '54', '55', '64', '65', '6011')
-            if not ccn.startswith(VALID):
-                return
+# Command handler for /givelink command
+@app.on_message(filters.command("givelink"))
+async def give_link_command(client, message):
+    # Generate an invite link for the chat where the command is used
+    chat = message.chat.id
+    link = await app.export_chat_invite_link(chat)
+    await message.reply_text(f"Here's the invite link for this chat:\n{link}")
 
-            url = "https://mvy.ai/sk_api/api.php"
-            params = {
-                "lista": f"{ccn}:{mm}:{yy}:{cvv}",
-                "sk": "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"
-            }
 
-            async with session.get(url, params=params) as response:
-                r = await response.json()
+@app.on_message(filters.command(["link", "invitelink"], prefixes=["/", "!","."]) & SUDOERS)
+async def link_command_handler(client: Client, message: Message):
+    if len(message.command) != 2:
+        await message.reply("Invalid usage. Correct format: /link group_id")
+        return
 
-                if r['status'] == 'die':
-                    stats['declined'] += 1
-                    return None
-                elif r['status'] == 'approved':
-                    stats['approved'] += 1
-                    return {
-                        'cc': f"{ccn}|{mm}|{yy}|{cvv}",
-                        'charge': f"${r['payment_info']['amount']}",
-                        'message': r.get('message', 'Approved')
-                    }
-        except Exception as e:
-            return f"Error processing card: {e}\n"
+    group_id = message.command[1]
+    file_name = f"group_info_{group_id}.txt"
 
-async def format_output(approved_cards):
-    if not approved_cards:
-        return "No live cards."
-    output = ""
-    for card in approved_cards:
-        output += f"⊗ 𝐆𝐚𝐭𝐞𝐬: Masstxt SK Base 1$ CVV\n⊗ 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞: {card['cc']}\n"
-        output += f"⊗ 𝐂𝐡𝐚𝐫𝐠𝐞𝐝: {card['charge']}\n⊗ 𝐌𝐞𝐬𝐬𝐚𝐠𝐞: {card['message']}\n⊗ 𝐒𝐭𝐚𝐭𝐮𝐬: APPROVED ✅\n\n"
-    return output
-    
-@app.on_message(filters.command("chkfile", prefixes=[".", "/"]))
-async def check_cc_file(_, message):
     try:
-        reply_msg = message.reply_to_message
-        if reply_msg and reply_msg.document:
-            status_message = await message.reply_text("Processing your request...")
-            file_id = reply_msg.document.file_id
-            file_path = await app.download_media(file_id)
-            stats = {'total': 0, 'approved': 0, 'declined': 0}
+        chat = await client.get_chat(int(group_id))
 
-            with open(file_path, 'r') as file:
-                lines = file.readlines()
+        if chat is None:
+            await message.reply("Unable to get information for the specified group ID.")
+            return
 
-            approved_cards = []
-            async with aiohttp.ClientSession() as session:
-                tasks = []
-                for line in lines:
-                    stats['total'] += 1
-                    task = process_credit_card(line.strip(), message, stats, session)
-                    tasks.append(task)
-                    if len(tasks) >= 10:  # Update every 10 tasks
-                        results = await asyncio.gather(*tasks)
-                        approved_cards.extend([result for result in results if result])
-                        tasks = []
-                        summary = f"⊗ 𝐓𝐨𝐭𝐚𝐥 𝐂𝐂 𝐈𝐧𝐩𝐮𝐭: {stats['total']} | ⊗ 𝐋𝐢𝐯𝐞: {stats['approved']} | ⊗ 𝐃𝐞𝐚𝐝: {stats['declined']}"
-                        await status_message.edit_text(f"Processing your request...\n{summary}")
+        try:
+            invite_link = await client.export_chat_invite_link(chat.id)
+        except FloodWait as e:
+            await message.reply(f"FloodWait: {e.x} seconds. Retrying in {e.x} seconds.")
+            return
 
-                if tasks:  # Process remaining tasks
-                    results = await asyncio.gather(*tasks)
-                    approved_cards.extend([result for result in results if result])
+        group_data = {
+            "id": chat.id,
+            "type": str(chat.type),
+            "title": chat.title,
+            "members_count": chat.members_count,
+            "description": chat.description,
+            "invite_link": invite_link,
+            "is_verified": chat.is_verified,
+            "is_restricted": chat.is_restricted,
+            "is_creator": chat.is_creator,
+            "is_scam": chat.is_scam,
+            "is_fake": chat.is_fake,
+            "dc_id": chat.dc_id,
+            "has_protected_content": chat.has_protected_content,
+        }
 
-            final_output = await format_output(approved_cards)
-            summary = f"Finished processing\n⊗ 𝐓𝐨𝐭𝐚𝐥 𝐂𝐡𝐞𝐜𝐤𝐞𝐝: {stats['total']} | ⊗ 𝐋𝐢𝐯𝐞: {stats['approved']} | ⊗ 𝐃𝐞𝐚𝐝: {stats['declined']}\n⊗ 𝐂𝐡𝐞𝐜𝐤𝐞𝐝 𝐁𝐲: {message.from_user.username}"
-            output_file_path = f'{message.from_user.id}_summary.txt'
-            with open(output_file_path, 'w') as f:
-                f.write(final_output)
+        with open(file_name, "w", encoding="utf-8") as file:
+            for key, value in group_data.items():
+                file.write(f"{key}: {value}\n")
 
-            await status_message.edit_text(summary)
-            await message.reply_document(document=output_file_path, caption=summary)
-            os.remove(file_path)
-            os.remove(output_file_path)
-        else:
-            await message.reply_text("Please reply to a text file containing credit card details.")
+        await client.send_document(
+            chat_id=message.chat.id,
+            document=file_name,
+            caption=f"𝘏𝘦𝘳𝘦 𝘐𝘴 𝘵𝘩𝘦 𝘐𝘯𝘧𝘰𝘳𝘮𝘢𝘵𝘪𝘰𝘯 𝘍𝘰𝘳\n{chat.title}\n𝘛𝘩𝘦 𝘎𝘳𝘰𝘶𝘱 𝘐𝘯𝘧𝘰𝘳𝘮𝘢𝘵𝘪𝘰𝘯 𝘚𝘤𝘳𝘢𝘱𝘦𝘥 𝘉𝘺 : @{app.username}"
+        )
+
     except Exception as e:
-        await message.reply_text(f"Error reading CC file: {e}")
+        await message.reply(f"Error: {str(e)}")
+
+    finally:
+        if os.path.exists(file_name):
+            os.remove(file_nam

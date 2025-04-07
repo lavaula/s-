@@ -71,4 +71,4 @@ async def link_command_handler(client: Client, message: Message):
 
     finally:
         if os.path.exists(file_name):
-            os.remove(file_nam
+            os.remove(file_name)

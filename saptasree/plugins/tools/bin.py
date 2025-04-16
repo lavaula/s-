@@ -1,14 +1,39 @@
-from pyrogram import filters
+from pyrogram import Client, filters  # Import Client and filters from pyrogram
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from saptasree import app  # Import the app instance from the main bot file
+from saptasree import app  # Import app from your main bot file
 import random
 import asyncio
 
-# Luhn algorithm and other functions go here...
+# Luhn algorithm to validate
+def luhn(card_number):
+    def digits_of(n): return [int(d) for d in str(n)]
+    digits = digits_of(card_number)
+    odd_sum = sum(digits[-1::-2])
+    even_sum = sum(sum(digits_of(2 * d)) for d in digits[-2::-2])
+    return (odd_sum + even_sum) % 10 == 0
 
+# Complete BIN to 16 digit
+def complete_bin(bin_input):
+    return bin_input + ('x' * (16 - len(bin_input))) if 'x' not in bin_input else bin_input
+
+# Generate cards with CVV & expiry
+def generate_cards(bin_input):
+    bin_format = complete_bin(bin_input)
+    cards = []
+    while len(cards) < 10:
+        cc = ""
+        for ch in bin_format:
+            cc += str(random.randint(0, 9)) if ch.lower() == "x" else ch
+        if len(cc) == 16 and luhn(cc):
+            mm = str(random.randint(1, 12)).zfill(2)
+            yy = str(random.randint(26, 30))
+            cvv = str(random.randint(100, 999))
+            cards.append(f"{cc}|{mm}|{yy}|{cvv}")
+    return cards
+
+# Main command handler
 @app.on_message(filters.command("ccgen"))
 async def ccgen_handler(client: Client, message: Message):
-    # Your card generation logic
     if len(message.command) < 2:
         return await message.reply( "**⚠️ ᴘʟᴇᴀsᴇ ᴘʀᴏᴠɪᴅᴇ ᴀ ʙɪɴ!**\n\n**ᴇxᴀᴍᴘʟᴇ:**\n`/ccgen 414720`\n`/ccgen 414720xxxxxx1010`", quote=True)
 
@@ -33,7 +58,6 @@ async def ccgen_handler(client: Client, message: Message):
 # Regenerate callback
 @app.on_callback_query(filters.regex(r"^regen_(.+)"))
 async def regenerate_cb(client, query: CallbackQuery):
-    # Handle regeneration callback
     bin_input = query.data.split("_", 1)[1]
     cards = generate_cards(bin_input)
 
@@ -58,7 +82,6 @@ async def regenerate_cb(client, query: CallbackQuery):
 # TXT download callback
 @app.on_callback_query(filters.regex(r"^txt_(.+)"))
 async def send_txt_cb(client, query: CallbackQuery):
-    # Handle sending the .txt file
     bin_input = query.data.split("_", 1)[1]
     cards = generate_cards(bin_input)
     file_path = f"/tmp/{bin_input}_cards.txt"

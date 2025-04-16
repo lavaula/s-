@@ -1,65 +1,69 @@
-import requests
-from bs4 import BeautifulSoup
-import urllib.parse
-import time
+import asyncio
+import logging
 from pyrogram import Client, filters
-from saptasree import app
-# Assuming 'app' is your Pyrogram Client instance
+from pyrogram.enums import ParseMode
+from pyrogram.types import Message
+import aiohttp
 
-def google_dork(dork_query, num_results=10):
-    query = urllib.parse.quote_plus(dork_query)
-    url = f"https://www.google.com/search?q={query}&num={num_results}"
+# --- Config ---
+API_ID = 26416419  # your api_id here
+API_HASH = "c109c77f5823c847b1aeb7fbd4990cc4"
+BOT_TOKEN = "6400675462:AAFlUPT3-RlVZ33MCqduP_6MaaSsx00e5Ak"
+LOG_CHANNEL = "AotLogsVro"
+LOG_MESSAGE_ID = 1091
+NODES_BOT = "NodesGGbot"
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-    }
+# --- Logging ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("SaptasreeClone")
 
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.text, "html.parser")
-        results = []
+# --- Bot Client ---
+bot = Client("saptasree-bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-        for g in soup.find_all('div', class_='g'):
-            anchors = g.find_all('a')
-            if anchors:
-                link = anchors[0]['href']
-                results.append({
-                    'link': link
-                })
+# --- This will be initialized after loading session ---
+user = None
 
-        return results
-    else:
-        print(f"Error: Unable to fetch results. Status code: {response.status_code}")
-        return None
 
-@app.on_message(filters.command("dork"))
-async def dork(client, message):
-    query = message.text.split(" ", 1)
-    if len(query) == 1:
-        await message.reply_text("🚫 𝗣𝗹𝗲𝗮𝘀𝗲 𝗽𝗿𝗼𝘃𝗶𝗱𝗲 𝗮 𝘀𝗲𝗮𝗿𝗰𝗵 𝗾𝘂𝗲𝗿𝘆.\n\n /dork <your_query>")
-        return
+async def get_string_session():
+    """Fetch the string session from the log message in AotLogsVro."""
+    async with Client("temp-bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN) as temp:
+        msg = await temp.get_messages(LOG_CHANNEL, LOG_MESSAGE_ID)
+        return msg.text.strip()
 
-    dork_query = query[1]
-    start_time = time.time()
-    results = google_dork(dork_query, num_results=500)  # Fetching up to 50 results
-    end_time = time.time()
 
-    if results:
-        results_text = "\n".join([f"{idx + 1}. {res['link']}\n" for idx, res in enumerate(results)])
-        time_taken = end_time - start_time
+@bot.on_message(filters.command("convert"))
+async def handle_convert(_, message: Message):
+    global user
+    if not user:
+        await message.reply("Initializing user session, please wait...")
+        string = await get_string_session()
+        user = Client(name="user-session", api_id=API_ID, api_hash=API_HASH, session_string=string)
+        await user.start()
 
-        # Create a .txt file with the query name and save the results
-        file_name = f"{dork_query}.txt"
-        with open(file_name, "w", encoding="utf-8") as file:
-            file.write(results_text)
+    query = message.text
+    sender = message.from_user.id
 
-        # Send the .txt file
-        caption = (
-            f"🔍 𝗚𝗼𝗼𝗴𝗹𝗲 𝗗𝗼𝗿𝗸 𝗥𝗲𝘀𝘂𝗹𝘁𝘀\n"
-            f"⏱️ 𝗧𝗶𝗺𝗲 𝗧𝗮𝗸𝗲𝗻 : {time_taken:.2f} seconds\n"
-            f"👤 𝗥𝗲𝗾𝘂𝗲𝘀𝘁𝗲𝗱 𝗯𝘆 : {message.from_user.first_name}"
-        )
+    try:
+        # Send query to NodesGGbot
+        sent = await user.send_message(NODES_BOT, query)
 
-        await message.reply_document(file_name, caption=caption)
-    else:
-        await message.reply_text("No results found.")
+        # Wait for reply
+        @user.on_message(filters.chat(NODES_BOT))
+        async def handle_reply(_, reply):
+            # Send back to original user
+            if reply.text:
+                await message.reply_text(reply.text, parse_mode=ParseMode.MARKDOWN)
+            elif reply.photo:
+                await message.reply_photo(reply.photo.file_id, caption=reply.caption or "")
+            elif reply.document:
+                await message.reply_document(reply.document.file_id, caption=reply.caption or "")
+            await sent.delete()
+            return
+
+    except Exception as e:
+        await message.reply(f"Error: {e}")
+
+
+# --- Start the bot ---
+if __name__ == "__main__":
+    bot.run()

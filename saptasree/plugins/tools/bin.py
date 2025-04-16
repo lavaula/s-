@@ -1,61 +1,57 @@
-import httpx
-from pyrogram import Client, filters
-from saptasree import app
+from aiogram import Router, types, F
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+import random
 
-import aiohttp
-from pyrogram import Client, filters, enums
+router = Router(name="ccgen_plugin")
 
-#
+def luhn(card_number):
+    def digits_of(n): return [int(d) for d in str(n)]
+    digits = digits_of(card_number)
+    odd_sum = sum(digits[-1::-2])
+    even_sum = sum(sum(digits_of(2 * d)) for d in digits[-2::-2])
+    return (odd_sum + even_sum) % 10 == 0
 
-# Function to fetch BIN information
-async def bin_lookup(bin_number):
-    astroboyapi = f"https://astroboyapi.com/api/bin.php?bin={bin_number}"
-
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async with session.get(astroboyapi) as response:
-            if response.status == 200:
-                try:
-                    bin_info = await response.json()
-                    brand = bin_info.get("brand", "N/A")
-                    card_type = bin_info.get("type", "N/A")
-                    level = bin_info.get("level", "N/A")
-                    bank = bin_info.get("bank", "N/A")
-                    country = bin_info.get("country_name", "N/A")
-                    country_flag = bin_info.get("country_flag", "")
-                    
-                    bin_info_text = f"""
-┏━━━━━━━⍟
-┃𝗕𝗜𝗡 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 🔍
-┗━━━━━━━━━━━⊛
-
-[ϟ] 𝗕𝗶𝗻: <code>{bin_number}</code>
-[ϟ] 𝗜𝗻𝗳𝗼: {brand} - {card_type} - {level}
-[ϟ] 𝗕𝗮𝗻𝗸: {bank}
-[ϟ] 𝗖𝗼𝘂𝗻𝘁𝗿𝘆: {country} {country_flag}
-"""
-                    return bin_info_text
-                except Exception as e:
-                    return f"Error: Unable to retrieve BIN information ({str(e)})"
+def generate_cc(bin_format):
+    cards = []
+    while len(cards) < 10:
+        cc = ""
+        for char in bin_format:
+            if char == "x":
+                cc += str(random.randint(0, 9))
             else:
-                return f"Error: Unable to retrieve BIN information (Status code: {response.status})"
+                cc += char
+        if luhn(cc):
+            cards.append(cc)
+    return cards
 
-# Command to handle BIN lookup
-@app.on_message(filters.command("bin", prefixes="."))
-async def bin_command(client, message):
-    if len(message.text.split()) >= 2:
-        bin_number = message.text.split()[1]
-        bin_number = bin_number[:6]
-    elif message.reply_to_message and message.reply_to_message.text:
-        bin_number = message.reply_to_message.text[:6]
-    else:
-        await message.reply("𝗣𝗿𝗼𝘃𝗶𝗱𝗲 𝗔 𝗩𝗮𝗹𝗶𝗱 𝗕𝗶𝗻 𝗧𝗼 𝗖𝗵𝗲𝗰𝗸", parse_mode=enums.ParseMode.HTML)
-        return
+@router.message(F.text.startswith("/ccgen"))
+async def handle_ccgen(message: types.Message):
+    parts = message.text.split()
+    if len(parts) < 2:
+        return await message.reply("⚠️ ᴘʟᴇᴀsᴇ ᴘʀᴏᴠɪᴅᴇ ᴀ ʙɪɴ ʟɪᴋᴇ:\n`/ccgen 414720xxxxxx1010`", parse_mode="Markdown")
     
-    bin_info = await bin_lookup(bin_number)
-    user_id = message.from_user.id
+    bin_format = parts[1]
+    try:
+        cards = generate_cc(bin_format)
+    except:
+        return await message.reply("⚠️ ɪɴᴠᴀʟɪᴅ ʙɪɴ ғᴏʀᴍᴀᴛ.", parse_mode="Markdown")
+    
+    text = "**ʜᴇʀᴇ ᴀʀᴇ ʏᴏᴜʀ ɢᴇɴᴇʀᴀᴛᴇᴅ ᴄᴀʀᴅs:**\n\n"
+    text += "\n".join(f"`{card}`" for card in cards)
 
-    await message.reply(f'''
-{bin_info}
+    button = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="🔁 ɢᴇɴᴇʀᴀᴛᴇ ᴀɢᴀɪɴ", callback_data=f"regen:{bin_format}")
+    ]])
+    await message.reply(text, reply_markup=button, parse_mode="Markdown")
 
-[ϟ] 𝗖𝗵𝗲𝗰𝗸𝗲𝗱 𝗕𝘆 ➺ <a href="tg://user?id={user_id}">{message.from_user.first_name}</a>
-''', parse_mode=enums.ParseMode.HTML, disable_web_page_preview=True)
+@router.callback_query(F.data.startswith("regen:"))
+async def regen_callback(query: CallbackQuery):
+    bin_format = query.data.split(":", 1)[1]
+    cards = generate_cc(bin_format)
+    text = "**ʀᴇ-ɢᴇɴᴇʀᴀᴛᴇᴅ ᴄᴀʀᴅs:**\n\n"
+    text += "\n".join(f"`{card}`" for card in cards)
+
+    button = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="🔁 ɢᴇɴᴇʀᴀᴛᴇ ᴀɢᴀɪɴ", callback_data=f"regen:{bin_format}")
+    ]])
+    await query.message.edit_text(text, reply_markup=button, parse_mode="Markdown")

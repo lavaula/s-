@@ -1,5 +1,5 @@
 from pyrogram import Client, filters
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InputMediaDocument
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 import random
 import asyncio
 
@@ -31,7 +31,7 @@ def generate_cards(bin_input):
     return cards
 
 # Main command handler
-@Client.on_message(filters.command("ccgen"))
+@app.on_message(filters.command("ccgen"))
 async def ccgen_handler(client: Client, message: Message):
     if len(message.command) < 2:
         return await message.reply( "**⚠️ ᴘʟᴇᴀsᴇ ᴘʀᴏᴠɪᴅᴇ ᴀ ʙɪɴ!**\n\n**ᴇxᴀᴍᴘʟᴇ:**\n`/ccgen 414720`\n`/ccgen 414720xxxxxx1010`", quote=True)
@@ -55,7 +55,7 @@ async def ccgen_handler(client: Client, message: Message):
     await message.reply(text, reply_markup=buttons)
 
 # Regenerate callback
-@Client.on_callback_query(filters.regex(r"^regen_(.+)"))
+@app.on_callback_query(filters.regex(r"^regen_(.+)"))
 async def regenerate_cb(client, query: CallbackQuery):
     bin_input = query.data.split("_", 1)[1]
     cards = generate_cards(bin_input)
@@ -79,7 +79,7 @@ async def regenerate_cb(client, query: CallbackQuery):
         await query.answer("ᴍᴇssᴀɢᴇ ᴛᴏᴏ ᴏʟᴅ ᴛᴏ ᴇᴅɪᴛ.", show_alert=True)
 
 # TXT download callback
-@Client.on_callback_query(filters.regex(r"^txt_(.+)"))
+@app.on_callback_query(filters.regex(r"^txt_(.+)"))
 async def send_txt_cb(client, query: CallbackQuery):
     bin_input = query.data.split("_", 1)[1]
     cards = generate_cards(bin_input)

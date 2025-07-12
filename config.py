@@ -12,7 +12,7 @@ load_dotenv()
 API_ID = int(getenv("API_ID"))
 
 API_URL = getenv("API_URL", 'https://api.thequickearn.xyz') #youtube song url
-API_KEY = getenv("API_KEY", "30DxNexGenBotse8f48c") 
+API_KEY = getenv("API_KEY", "NxGBNexGenBots3529c4") 
 
 API_HASH = getenv("API_HASH")
 
